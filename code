@@ -1,0 +1,73 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from matplotlib import pyplot as plt
+from google.colab import drive
+
+drive.mount('/content/gdrive')
+file_path = pd.read_csv('/content/gdrive/My Drive/AILabs/booking.csv')
+
+# Read dataset 
+file_path.head()
+X = file_path.iloc[:, 2:]
+y = file_path.iloc[:, 1]
+
+# Print the head and features
+print("Features Name:", file_path.columns.tolist())
+print("Dataset Head:\n", file_path.head())
+
+# Separate numeric and categorical columns
+numeric_features = X.select_dtypes(include=['int64', 'float64']).columns
+categorical_features = X.select_dtypes(include=['object']).columns
+
+# Create transformers for numeric and categorical data
+numeric_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='mean')),
+    ('scaler', StandardScaler())])
+
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+
+# Combine transformers into a preprocessor
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transformer, numeric_features),
+        ('cat', categorical_transformer, categorical_features)])
+
+# Apply transformations to the data
+X = preprocessor.fit_transform(X)
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20)
+classifier = KNeighborsClassifier(n_neighbors=5)
+classifier.fit(X_train, y_train)
+
+y_pred = classifier.predict(X_test)
+
+# Report the model performance
+print(confusion_matrix(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+
+error = []
+
+#the mean error for the optimal k
+error = []
+for i in range(1, 20):
+    knn = KNeighborsClassifier(n_neighbors=i)
+    knn.fit(X_train, y_train)
+    pred_i = knn.predict(X_test)
+    error.append(np.mean(pred_i != y_test))
+
+plt.figure(figsize=(12, 6))
+plt.plot(range(1, 20), error, color='red', linestyle='dashed', marker='o',
+         markerfacecolor='blue', markersize=10)
+plt.title('Error Rate K Value')
+plt.xlabel('K Value')
+plt.ylabel('Mean Error')
